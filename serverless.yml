@@ -1,0 +1,17 @@
+service: quiznox-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ap-northeast-2
+  memorySize: 128
+  timeout: 10
+
+functions:
+  api:
+    handler: index.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
