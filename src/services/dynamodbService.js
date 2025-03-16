@@ -3,19 +3,7 @@ const {
   ScanCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const {
-  AWS_REGION,
-  AWS_ACCESS_KEY_ID,
-  AWS_SECRET_ACCESS_KEY,
-} = require("../config/env");
-
-const client = new DynamoDBClient({
-  region: AWS_REGION,
-  credentials: {
-    accessKeyId: AWS_ACCESS_KEY_ID,
-    secretAccessKey: AWS_SECRET_ACCESS_KEY,
-  },
-});
+const client = new DynamoDBClient({}); // ✅ Lambda IAM Role 사용하도록 변경
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
 async function getQuestions(tableName) {
