@@ -1,4 +1,4 @@
-service: quiznox-api
+service: quiznox
 
 provider:
   name: aws

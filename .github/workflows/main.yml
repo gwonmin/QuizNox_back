@@ -3,7 +3,7 @@ name: Deploy to AWS Lambda
 on:
   push:
     branches:
-      - main  # main 브랜치에 push 될 때 배포
+      - main # main 브랜치에 push 될 때 배포
 
 jobs:
   deploy:
@@ -16,7 +16,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install dependencies
         run: npm ci
@@ -32,6 +32,6 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy with Serverless
-        run: sls deploy
+        run: sls deploy --stage dev
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_TOKEN }}
