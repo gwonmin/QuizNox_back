@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "IS_LOCAL=true node src/index.js"
+    "dev": "node src/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.767.0",
