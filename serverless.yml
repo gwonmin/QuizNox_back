@@ -18,7 +18,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource:
-        - arn:aws:dynamodb:ap-northeast-2:*:table/DvaDumps
+        - arn:aws:dynamodb:ap-northeast-2:*:table/QuizNox_Questions
   httpApi:
     cors:
       allowedOrigins:
