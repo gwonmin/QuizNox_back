@@ -1,16 +1,15 @@
-const { getQuestions } = require("../services/dynamodbService");
+const { getQuestionsByTopic } = require("../services/dynamodbService");
 
 async function questionsRoutes(fastify, options) {
   fastify.get("/questions", async (request, reply) => {
     try {
-      const { tableName } = request.query;
-      if (!tableName) {
-        return reply
-          .status(400)
-          .send({ message: "Missing tableName parameter" });
+      const tableName = "QuizNox_Questions";
+      const topicId = request.query.topicId;
+      if (!topicId) {
+        return reply.status(400).send({ message: "Missing topicId parameter" });
       }
 
-      const questions = await getQuestions(tableName);
+      const questions = await getQuestionsByTopic(tableName, topicId);
 
       if (questions.length === 0) {
         return reply.status(404).send({ message: "No items found" });
