@@ -24,16 +24,16 @@ functions:
   api:
     handler: src/index.handler
     events:
-      - http:
+      - httpApi:
           path: /{proxy+}
           method: ANY
           cors:
-            origin: "*"
-            headers:
+            allowedOrigins:
+              - "*"
+            allowedHeaders:
               - Content-Type
-              - X-Amz-Date
               - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-              - X-Amz-User-Agent
-            allowCredentials: false
+            allowedMethods:
+              - GET
+              - POST
+              - OPTIONS
