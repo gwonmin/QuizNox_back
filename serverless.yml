@@ -15,7 +15,8 @@ provider:
         - dynamodb:Query
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: arn:aws:dynamodb:ap-northeast-2:*
+      Resource:
+        - arn:aws:dynamodb:ap-northeast-2:*:table/DvaDumps
 
 functions:
   api:
