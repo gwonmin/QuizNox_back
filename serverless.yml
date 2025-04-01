@@ -4,6 +4,8 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: ap-northeast-2
+  endpointType: regional
+  stage: prod
   memorySize: 128
   timeout: 10
   iamRoleStatements:
