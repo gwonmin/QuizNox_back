@@ -22,14 +22,11 @@ async function getQuestionsByTopic(tableName, topicId) {
       ExpressionAttributeValues: {
         ":tid": topicId,
       },
+      ScanIndexForward: true, // ⬅️ 정렬 서버에서 하게 설정!
     })
   );
 
-  return Items
-    ? Items.sort(
-        (a, b) => Number(a.question_number) - Number(b.question_number)
-      )
-    : [];
+  return Items ?? [];
 }
 
 module.exports = { getQuestionsByTopic };
