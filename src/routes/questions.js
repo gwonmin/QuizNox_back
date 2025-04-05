@@ -1,4 +1,4 @@
-const { getQuestionsByTopic } = require("../services/dynamodbService");
+const { getAllQuestionsByTopic } = require("../services/dynamodbService");
 
 async function questionsRoutes(fastify, options) {
   fastify.get("/questions", async (request, reply) => {
@@ -9,7 +9,7 @@ async function questionsRoutes(fastify, options) {
         return reply.status(400).send({ message: "Missing topicId parameter" });
       }
 
-      const questions = await getQuestionsByTopic(tableName, topicId);
+      const questions = await getAllQuestionsByTopic(tableName, topicId);
 
       if (questions.length === 0) {
         return reply.status(404).send({ message: "No items found" });

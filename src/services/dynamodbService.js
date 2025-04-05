@@ -4,29 +4,33 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 
-const client = new DynamoDBClient({}); // ✅ Lambda IAM Role 사용하도록 변경
+const client = new DynamoDBClient({});
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
-/**
- * 주어진 topic_id로 문제 리스트를 조회하고 question_number 기준으로 정렬해서 반환
- */
-async function getQuestionsByTopic(tableName, topicId) {
-  if (!tableName || !topicId) {
-    throw new Error("Missing tableName or topicId parameter");
-  }
+//DynamoDB의 Query나 Scan은 응답 크기 제한(기본 1MB)
+//아래처럼 LastEvaluatedKey가 있는 한 계속 QueryCommand를 반복해서 호출
+async function getAllQuestionsByTopic(tableName, topicId) {
+  let allItems = [];
+  let ExclusiveStartKey = undefined;
 
-  const { Items } = await dynamoDB.send(
-    new QueryCommand({
-      TableName: tableName,
-      KeyConditionExpression: "topic_id = :tid",
-      ExpressionAttributeValues: {
-        ":tid": topicId,
-      },
-      ScanIndexForward: true, // ⬅️ 정렬 서버에서 하게 설정!
-    })
-  );
+  do {
+    const response = await dynamoDB.send(
+      new QueryCommand({
+        TableName: tableName,
+        KeyConditionExpression: "topic_id = :tid",
+        ExpressionAttributeValues: {
+          ":tid": topicId,
+        },
+        ExclusiveStartKey,
+        ScanIndexForward: true,
+      })
+    );
 
-  return Items ?? [];
+    allItems = allItems.concat(response.Items ?? []);
+    ExclusiveStartKey = response.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+
+  return allItems;
 }
 
-module.exports = { getQuestionsByTopic };
+module.exports = { getAllQuestionsByTopic };
