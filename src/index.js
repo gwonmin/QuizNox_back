@@ -21,7 +21,11 @@ if (process.env.IS_LOCAL === "true") {
   const start = async () => {
     try {
       console.log("🚀 Starting Fastify server...");
-      await fastify.listen({ port: 4000, host: "localhost" });
+      await fastify.listen({ 
+        port: process.env.PORT || 4000, 
+        host: process.env.HOST || "localhost" 
+      });
+      console.log(`✅ Server running on http://${process.env.HOST || "localhost"}:${process.env.PORT || 4000}`);
     } catch (err) {
       console.error("❌ Server failed to start:", err);
       process.exit(1);

@@ -1,6 +1,12 @@
 {
   "scripts": {
-    "dev": "node src/index.js"
+    "dev": "node src/index.js",
+    "start": "node src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integration",
+    "test:real-db": "cross-env USE_REAL_DB=true jest tests/integration/real-db.integration.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.767.0",
@@ -9,5 +15,11 @@
     "dotenv": "^16.4.7",
     "fastify": "^4.21.0",
     "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "cross-env": "^7.0.3",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4"
   }
 }
