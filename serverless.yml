@@ -2,7 +2,7 @@ service: quiznox
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs20.x
   region: ap-northeast-2
   endpointType: regional
   stage: prod
