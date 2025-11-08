@@ -1,6 +1,7 @@
 const fastify = require("fastify")({ logger: true });
 const serverless = require("serverless-http");
 const cors = require("@fastify/cors");
+const authPlugin = require("./plugins/auth");
 const routes = require("./routes");
 require("dotenv").config();
 
@@ -9,6 +10,9 @@ fastify.register(cors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
+
+// 인증 플러그인 등록 (모든 API에 일괄 적용)
+fastify.register(authPlugin);
 
 // 라우트 등록
 fastify.register(routes);
