@@ -1,5 +1,6 @@
 const fastify = require('fastify');
 const routes = require('../../src/routes');
+const authPlugin = require('../../src/plugins/auth');
 
 // 실제 DynamoDB 연결을 위한 환경 변수 설정
 process.env.AWS_REGION = 'ap-northeast-2';
@@ -10,6 +11,8 @@ describe('QuizNox API Integration Tests', () => {
 
   beforeAll(async () => {
     app = fastify();
+    // 인증 플러그인 등록 (프로덕션과 동일하게)
+    await app.register(authPlugin);
     await app.register(routes);
     await app.ready();
   });
@@ -22,7 +25,10 @@ describe('QuizNox API Integration Tests', () => {
     it('should handle complete request flow with real data', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/questions?topicId=AWS_DVA'
+        url: '/questions?topicId=AWS_DVA',
+        headers: {
+          authorization: 'Bearer test_user_id'
+        }
       });
 
       console.log(`📊 API 응답 상태: ${response.statusCode}`);
@@ -48,7 +54,10 @@ describe('QuizNox API Integration Tests', () => {
       try {
         const response = await app.inject({
           method: 'GET',
-          url: '/questions?topicId=test'
+          url: '/questions?topicId=test',
+          headers: {
+            authorization: 'Bearer test_user_id'
+          }
         });
 
         // 에러가 발생하면 500 또는 404로 처리될 수 있음
@@ -78,7 +87,10 @@ describe('QuizNox API Integration Tests', () => {
     it('should handle empty results', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/questions?topicId=non-existent-topic-12345'
+        url: '/questions?topicId=non-existent-topic-12345',
+        headers: {
+          authorization: 'Bearer test_user_id'
+        }
       });
 
       // 404 (데이터 없음) 또는 500 (DB 연결 실패) 모두 정상
@@ -117,7 +129,10 @@ describe('QuizNox API Integration Tests', () => {
     it('should return consistent response format for success', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/questions?topicId=AWS_DVA'
+        url: '/questions?topicId=AWS_DVA',
+        headers: {
+          authorization: 'Bearer test_user_id'
+        }
       });
 
       if (response.statusCode === 200) {
@@ -160,7 +175,10 @@ describe('QuizNox API Integration Tests', () => {
       const requests = Array(3).fill().map(() => 
         app.inject({
           method: 'GET',
-          url: '/questions?topicId=AWS_DVA'
+          url: '/questions?topicId=AWS_DVA',
+          headers: {
+            authorization: 'Bearer test_user_id'
+          }
         })
       );
 

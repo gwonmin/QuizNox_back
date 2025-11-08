@@ -2,6 +2,7 @@
 const { getAllQuestionsByTopic, createDynamoDBClient } = require('../../src/services/dynamodbService');
 const fastify = require('fastify');
 const routes = require('../../src/routes');
+const authPlugin = require('../../src/plugins/auth');
 
 // 실제 DynamoDB 연결을 위한 환경 변수 설정
 process.env.AWS_REGION = 'ap-northeast-2';
@@ -14,6 +15,8 @@ describe('QuizNox Real Database Integration Tests', () => {
   beforeAll(async () => {
     // Fastify 앱 설정
     app = fastify();
+    // 인증 플러그인 등록 (프로덕션과 동일하게)
+    await app.register(authPlugin);
     await app.register(routes);
     await app.ready();
 
@@ -38,7 +41,10 @@ describe('QuizNox Real Database Integration Tests', () => {
     it('should handle GET /questions with real data', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/questions?topicId=AWS_DVA'
+        url: '/questions?topicId=AWS_DVA',
+        headers: {
+          authorization: 'Bearer test_user_id'
+        }
       });
 
       console.log(`📊 API 응답 상태: ${response.statusCode}`);
@@ -83,7 +89,10 @@ describe('QuizNox Real Database Integration Tests', () => {
     it('should validate question data structure when data exists', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/questions?topicId=AWS_DVA'
+        url: '/questions?topicId=AWS_DVA',
+        headers: {
+          authorization: 'Bearer test_user_id'
+        }
       });
 
       if (response.statusCode === 200) {
@@ -132,7 +141,10 @@ describe('QuizNox Real Database Integration Tests', () => {
       try {
         const response = await app.inject({
           method: 'GET',
-          url: '/questions?topicId=test'
+          url: '/questions?topicId=test',
+          headers: {
+            authorization: 'Bearer test_user_id'
+          }
         });
         
         // 에러가 발생하면 500 또는 404로 처리될 수 있음
