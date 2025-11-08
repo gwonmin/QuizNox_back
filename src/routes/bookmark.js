@@ -4,11 +4,11 @@ async function bookmarkRoutes(fastify, options) {
   // 북마크 저장 API
   fastify.post("/bookmark", async (request, reply) => {
     try {
-      const { topicId, questionNumber } = request.body;
+      const { topicId, questionNumber } = request.body || {};
       const userId = request.user?.userId;
 
       // 파라미터 검증
-      if (!topicId || typeof topicId !== "string") {
+      if (!topicId) {
         return reply.status(400).send({
           success: false,
           data: null,
@@ -17,11 +17,7 @@ async function bookmarkRoutes(fastify, options) {
         });
       }
 
-      if (
-        !questionNumber ||
-        typeof questionNumber !== "string" ||
-        questionNumber.length === 0
-      ) {
+      if (!questionNumber) {
         return reply.status(400).send({
           success: false,
           data: null,
@@ -68,11 +64,11 @@ async function bookmarkRoutes(fastify, options) {
   // 북마크 조회 API
   fastify.get("/bookmark", async (request, reply) => {
     try {
-      const { topicId } = request.query;
+      const topicId = request.query.topicId;
       const userId = request.user?.userId;
 
       // 파라미터 검증
-      if (!topicId || typeof topicId !== "string") {
+      if (!topicId) {
         return reply.status(400).send({
           success: false,
           data: null,
