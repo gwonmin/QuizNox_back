@@ -1,5 +1,27 @@
 const { saveBookmark, getBookmark } = require("../services/dynamodbService");
 
+/**
+ * questionNumber를 4자리 패딩 형식으로 정규화합니다.
+ * 예: "1" -> "0001", "123" -> "0123", "0001" -> "0001"
+ */
+function normalizeQuestionNumber(questionNumber) {
+  if (!questionNumber) {
+    return null;
+  }
+
+  // 문자열로 변환
+  const str = String(questionNumber).trim();
+
+  // 숫자가 아닌 경우 원본 반환 (이미 "0001" 형식일 수 있음)
+  const num = parseInt(str, 10);
+  if (isNaN(num)) {
+    return str; // 숫자가 아니면 원본 반환
+  }
+
+  // 4자리 패딩 형식으로 변환
+  return String(num).padStart(4, "0");
+}
+
 async function bookmarkRoutes(fastify, options) {
   // 북마크 저장 API
   fastify.post("/bookmark", async (request, reply) => {
@@ -26,8 +48,15 @@ async function bookmarkRoutes(fastify, options) {
         });
       }
 
+      // questionNumber를 4자리 패딩 형식으로 정규화
+      const normalizedQuestionNumber = normalizeQuestionNumber(questionNumber);
+
       // 북마크 저장
-      const bookmark = await saveBookmark(userId, topicId, questionNumber);
+      const bookmark = await saveBookmark(
+        userId,
+        topicId,
+        normalizedQuestionNumber
+      );
 
       return reply.status(200).send({
         success: true,
