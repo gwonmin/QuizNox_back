@@ -17,7 +17,11 @@ async function bookmarkRoutes(fastify, options) {
         });
       }
 
-      if (typeof questionNumber !== "number" || questionNumber < 1) {
+      if (
+        !questionNumber ||
+        typeof questionNumber !== "string" ||
+        questionNumber.length === 0
+      ) {
         return reply.status(400).send({
           success: false,
           data: null,
@@ -42,7 +46,7 @@ async function bookmarkRoutes(fastify, options) {
       if (
         error.message.includes("userId must be a non-empty string") ||
         error.message.includes("topicId must be a non-empty string") ||
-        error.message.includes("questionNumber must be a positive number")
+        error.message.includes("questionNumber must be a non-empty string")
       ) {
         return reply.status(400).send({
           success: false,
@@ -122,4 +126,3 @@ async function bookmarkRoutes(fastify, options) {
 }
 
 module.exports = bookmarkRoutes;
-

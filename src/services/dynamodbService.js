@@ -138,7 +138,7 @@ async function getAllQuestionsByTopic(
  * 북마크를 저장하거나 업데이트합니다.
  * @param {string} userId - 사용자 ID
  * @param {string} topicId - 토픽 ID
- * @param {number} questionNumber - 문제 번호
+ * @param {string} questionNumber - 문제 번호
  * @param {Object} options - 옵션 객체
  * @param {string} [options.tableName=DYNAMODB_BOOKMARKS_TABLE_NAME] - DynamoDB 테이블 이름
  * @returns {Promise<Object>} - 저장된 북마크 데이터
@@ -157,8 +157,8 @@ async function saveBookmark(userId, topicId, questionNumber, options = {}) {
   if (!topicId || typeof topicId !== "string") {
     throw new Error("topicId must be a non-empty string");
   }
-  if (typeof questionNumber !== "number" || questionNumber < 1) {
-    throw new Error("questionNumber must be a positive number");
+  if (!questionNumber || typeof questionNumber !== "string") {
+    throw new Error("questionNumber must be a non-empty string");
   }
 
   try {
