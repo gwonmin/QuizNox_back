@@ -173,11 +173,11 @@ async function saveBookmark(userId, topicId, questionNumber, options = {}) {
     });
 
     const bookmark = {
-      userId,
-      topicId,
-      questionNumber,
-      createdAt: existingBookmark?.createdAt || now, // 기존 북마크가 있으면 createdAt 유지
-      updatedAt: now, // updatedAt은 항상 현재 시간으로 업데이트
+      user_id: userId,
+      topic_id: topicId,
+      question_number: questionNumber,
+      created_at: existingBookmark?.created_at || now, // 기존 북마크가 있으면 created_at 유지
+      updated_at: now, // updated_at은 항상 현재 시간으로 업데이트
       ttl,
     };
 
@@ -232,8 +232,8 @@ async function getBookmark(userId, topicId, options = {}) {
       new GetCommand({
         TableName: tableName,
         Key: {
-          userId,
-          topicId,
+          user_id: userId,
+          topic_id: topicId,
         },
       })
     );

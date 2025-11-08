@@ -47,14 +47,14 @@ resources:
         TableName: QuizNox_Bookmarks
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
-          - AttributeName: userId
+          - AttributeName: user_id
             AttributeType: S
-          - AttributeName: topicId
+          - AttributeName: topic_id
             AttributeType: S
         KeySchema:
-          - AttributeName: userId
+          - AttributeName: user_id
             KeyType: HASH
-          - AttributeName: topicId
+          - AttributeName: topic_id
             KeyType: RANGE
         TimeToLiveSpecification:
           Enabled: true
