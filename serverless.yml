@@ -63,6 +63,11 @@ resources:
 functions:
   api:
     handler: src/index.handler
+    environment:
+      JWT_SECRET: ${env:JWT_SECRET, ''}
+      DYNAMODB_TABLE_NAME: QuizNox_Questions
+      DYNAMODB_BOOKMARKS_TABLE_NAME: QuizNox_Bookmarks
+      AWS_REGION: ap-northeast-2
     events:
       - httpApi:
           path: /{proxy+}

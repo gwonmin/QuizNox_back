@@ -9,10 +9,29 @@ async function authPlugin(fastify, options) {
   fastify.decorateRequest("user", null);
 
   fastify.addHook("onRequest", async (request, reply) => {
-    // Authorization 헤더 확인
-    const authHeader = request.headers.authorization;
+    // Authorization 헤더 확인 (API Gateway HTTP API는 헤더를 소문자로 변환함)
+    // serverless-http는 헤더를 다르게 처리할 수 있으므로 대소문자 구분 없이 찾음
+    let authHeader = null;
+    const headerKeys = Object.keys(request.headers);
+
+    // 대소문자 구분 없이 authorization 헤더 찾기
+    for (const key of headerKeys) {
+      if (key.toLowerCase() === "authorization") {
+        authHeader = request.headers[key];
+        break;
+      }
+    }
+
+    // 디버깅: 헤더 확인
+    fastify.log.info({
+      msg: "Auth header check",
+      hasAuthHeader: !!authHeader,
+      headerKeys: headerKeys,
+      authHeaderValue: authHeader ? authHeader.substring(0, 20) + "..." : null,
+    });
 
     if (!authHeader) {
+      fastify.log.warn("Authorization header is missing");
       return reply.status(401).send({
         success: false,
         data: null,
@@ -24,6 +43,11 @@ async function authPlugin(fastify, options) {
     // Bearer Token 형식 확인
     const parts = authHeader.split(" ");
     if (parts.length !== 2 || parts[0] !== "Bearer") {
+      fastify.log.warn({
+        msg: "Invalid Bearer token format",
+        partsLength: parts.length,
+        firstPart: parts[0],
+      });
       return reply.status(401).send({
         success: false,
         data: null,
@@ -35,8 +59,6 @@ async function authPlugin(fastify, options) {
     const token = parts[1];
 
     try {
-      // TODO: JWT_SECRET을 알게 되면 아래 주석을 해제하고 실제 JWT 검증을 사용하세요
-      /*
       // JWT_SECRET 환경 변수 확인
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
@@ -53,9 +75,11 @@ async function authPlugin(fastify, options) {
       const decoded = jwt.verify(token, jwtSecret);
 
       // user_id 추출 (다양한 필드명 지원)
-      const userId = decoded.user_id || decoded.userId || decoded.sub || decoded.id;
+      const userId =
+        decoded.user_id || decoded.userId || decoded.sub || decoded.id;
 
       if (!userId) {
+        fastify.log.warn("JWT 토큰에 user_id가 없습니다.");
         return reply.status(401).send({
           success: false,
           data: null,
@@ -66,27 +90,17 @@ async function authPlugin(fastify, options) {
 
       // request 객체에 user 정보 추가
       request.user = { userId };
-      */
 
-      // 임시 구현: 테스트용 (JWT 검증 없이 토큰을 user_id로 사용)
-      // 실제 프로덕션에서는 위의 JWT 검증 로직을 사용해야 합니다
-      if (!token || token.length === 0) {
-        return reply.status(401).send({
-          success: false,
-          data: null,
-          message: "인증이 필요합니다.",
-          statusCode: 401,
-        });
-      }
-
-      // 토큰을 user_id로 사용 (테스트용)
-      // 실제로는 JWT에서 user_id를 추출해야 합니다
-      const userId = token;
-      request.user = { userId };
+      // 디버깅: userId 추출 확인
+      fastify.log.info({
+        msg: "User authenticated",
+        userId: String(userId).substring(0, 20) + "...",
+        userIdLength: String(userId).length,
+      });
     } catch (error) {
-      // JWT 검증 실패 처리 (현재는 사용하지 않지만 주석 처리)
-      /*
+      // JWT 검증 실패 처리
       if (error.name === "JsonWebTokenError") {
+        fastify.log.warn(`JWT 검증 실패: ${error.message}`);
         return reply.status(401).send({
           success: false,
           data: null,
@@ -96,6 +110,7 @@ async function authPlugin(fastify, options) {
       }
 
       if (error.name === "TokenExpiredError") {
+        fastify.log.warn("JWT 토큰이 만료되었습니다.");
         return reply.status(401).send({
           success: false,
           data: null,
@@ -103,7 +118,6 @@ async function authPlugin(fastify, options) {
           statusCode: 401,
         });
       }
-      */
 
       // 기타 에러
       fastify.log.error(`인증 에러: ${error.message}`);

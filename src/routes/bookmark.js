@@ -29,6 +29,16 @@ async function bookmarkRoutes(fastify, options) {
       const { topicId, questionNumber } = request.body || {};
       const userId = request.user?.userId;
 
+      // 디버깅: userId 확인
+      fastify.log.info({
+        msg: "Bookmark save request",
+        hasUser: !!request.user,
+        userId: userId || "undefined",
+        userIdType: typeof userId,
+        topicId,
+        questionNumber,
+      });
+
       // 파라미터 검증
       if (!topicId) {
         return reply.status(400).send({
@@ -95,6 +105,15 @@ async function bookmarkRoutes(fastify, options) {
     try {
       const topicId = request.query.topicId;
       const userId = request.user?.userId;
+
+      // 디버깅: userId 확인
+      fastify.log.info({
+        msg: "Bookmark get request",
+        hasUser: !!request.user,
+        userId: userId || "undefined",
+        userIdType: typeof userId,
+        topicId,
+      });
 
       // 파라미터 검증
       if (!topicId) {
