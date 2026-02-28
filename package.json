@@ -1,4 +1,7 @@
 {
+  "name": "quiznox-api",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "node src/index.js",
     "start": "node src/index.js",
@@ -14,8 +17,7 @@
     "@fastify/cors": "^8.5.0",
     "dotenv": "^16.4.7",
     "fastify": "^4.21.0",
-    "jsonwebtoken": "^9.0.2",
-    "serverless-http": "^3.2.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: quiznox-api
+  namespace: quiznox
+  labels:
+    app: quiznox-api
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 4000
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 4000
+    protocol: TCP
+    name: https
+  selector:
+    app: quiznox-api
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800

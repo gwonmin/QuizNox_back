@@ -23,8 +23,6 @@ module.exports = {
     '!**/node_modules/**'
   ],
   
-  // 커버리지 임계값 (실제 DB 테스트용 - 낮춤)
-  // TODO: 북마크 API 테스트 추가 후 다시 올릴 예정
   coverageThreshold: {
     global: {
       branches: 10,

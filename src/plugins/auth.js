@@ -9,8 +9,8 @@ async function authPlugin(fastify, options) {
   fastify.decorateRequest("user", null);
 
   fastify.addHook("onRequest", async (request, reply) => {
-    // Authorization 헤더 확인 (API Gateway HTTP API는 헤더를 소문자로 변환함)
-    // serverless-http는 헤더를 다르게 처리할 수 있으므로 대소문자 구분 없이 찾음
+    if (request.routeOptions?.config?.skipAuth) return;
+
     let authHeader = null;
     const headerKeys = Object.keys(request.headers);
 

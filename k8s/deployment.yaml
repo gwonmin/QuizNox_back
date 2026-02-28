@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quiznox-api
+  namespace: quiznox
+  labels:
+    app: quiznox-api
+    environment: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: quiznox-api
+  template:
+    metadata:
+      labels:
+        app: quiznox-api
+    spec:
+      imagePullSecrets:
+        - name: ecr-registry-secret
+      containers:
+        - name: quiznox-api
+          image: ${IMAGE_URI}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4000
+              name: http
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "4000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: quiznox-secrets
+                  key: JWT_SECRET
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: quiznox-config
+                  key: AWS_REGION
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: quiznox-config
+                  key: NODE_ENV
+            - name: DYNAMODB_TABLE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: quiznox-config
+                  key: DYNAMODB_TABLE_NAME
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

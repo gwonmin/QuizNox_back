@@ -1,39 +1,31 @@
 const fastify = require("fastify")({ logger: true });
-const serverless = require("serverless-http");
 const cors = require("@fastify/cors");
 const authPlugin = require("./plugins/auth");
 const routes = require("./routes");
 require("dotenv").config();
 
-// CORS 설정
 fastify.register(cors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
-// 인증 플러그인 등록 (모든 API에 일괄 적용)
-fastify.register(authPlugin);
+fastify.get("/health", { config: { skipAuth: true } }, async () => {
+  return { status: "ok", service: "quiznox-api" };
+});
 
-// 라우트 등록
+fastify.register(authPlugin);
 fastify.register(routes);
 
-// Lambda 핸들러 등록
-module.exports.handler = serverless(fastify);
+const start = async () => {
+  try {
+    await fastify.listen({
+      port: process.env.PORT || 4000,
+      host: process.env.HOST || "0.0.0.0",
+    });
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
 
-// 로컬 개발 환경일 때만 listen 실행
-if (process.env.IS_LOCAL === "true") {
-  const start = async () => {
-    try {
-      console.log("🚀 Starting Fastify server...");
-      await fastify.listen({ 
-        port: process.env.PORT || 4000, 
-        host: process.env.HOST || "localhost" 
-      });
-      console.log(`✅ Server running on http://${process.env.HOST || "localhost"}:${process.env.PORT || 4000}`);
-    } catch (err) {
-      console.error("❌ Server failed to start:", err);
-      process.exit(1);
-    }
-  };
-  start();
-}
+start();

@@ -1,0 +1,282 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.gitignore'
+      - '.cursorrules'
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - '.gitignore'
+      - '.cursorrules'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-2
+  ENVIRONMENT: prod
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app_changed: ${{ steps.filter.outputs.app }}
+      deploy_changed: ${{ steps.filter.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'tests/**'
+              - 'Dockerfile'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'jest.config.js'
+            deploy:
+              - 'scripts/**'
+              - 'k8s/**'
+              - 'requirements.txt'
+
+  test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.app_changed == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ['20']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          AWS_REGION: ap-northeast-2
+          DYNAMODB_TABLE_NAME: QuizNox_Questions
+
+      - name: Run test coverage
+        run: npm run test:coverage
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+        continue-on-error: true
+
+  build-and-push:
+    needs: [detect-changes, test]
+    if: >-
+      always() &&
+      needs.detect-changes.outputs.app_changed == 'true' &&
+      needs.test.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get ECR repository URI
+        id: ecr
+        run: |
+          REPO_URI=$(aws ecr describe-repositories --repository-names quiznox-${{ env.ENVIRONMENT }} --query 'repositories[0].repositoryUri' --output text --region ${{ env.AWS_REGION }} || echo "")
+          if [ -z "$REPO_URI" ]; then
+            echo "::error::ECR repository not found. Ensure cluster-infra has been applied."
+            exit 1
+          fi
+          echo "ECR_REPOSITORY_URI=$REPO_URI" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY_URI=$REPO_URI" >> $GITHUB_OUTPUT
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+          podman info || true
+
+      - name: Login to ECR (Podman)
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | podman login --username AWS --password-stdin ${{ env.ECR_REPOSITORY_URI }}
+
+      - name: Build and push image with Podman
+        run: python scripts/build_and_push.py
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          IMAGE_TAG: ${{ github.sha }}
+          ECR_REPOSITORY_URI: ${{ env.ECR_REPOSITORY_URI }}
+
+  deploy:
+    needs: [detect-changes, build-and-push]
+    if: >-
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      (
+        needs.build-and-push.result == 'success' ||
+        (needs.detect-changes.outputs.deploy_changed == 'true' && needs.detect-changes.outputs.app_changed != 'true')
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get infrastructure values from AWS
+        id: infra_values
+        run: |
+          EC2_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=authcore-k8s-node-${{ env.ENVIRONMENT }}" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text --region ${{ env.AWS_REGION }} 2>/dev/null || echo "")
+          API_GATEWAY_ID=$(aws apigatewayv2 get-apis --region ${{ env.AWS_REGION }} \
+            --query "Items[?contains(Name, 'quiznox') || contains(Name, 'QuizNox')].ApiId" --output text 2>/dev/null | awk '{print $1}' || echo "")
+
+          if [ -z "$EC2_IP" ] || [ "$EC2_IP" == "None" ] || [ "$EC2_IP" == "null" ]; then
+            echo "::error::EC2 instance not found. Ensure cluster-infra has been applied."
+            exit 1
+          fi
+
+          echo "EC2_PUBLIC_IP=$EC2_IP" >> $GITHUB_ENV
+          echo "EC2_PUBLIC_IP=$EC2_IP" >> $GITHUB_OUTPUT
+
+          if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "null" ] && [ "$API_GATEWAY_ID" != "None" ]; then
+            echo "API_GATEWAY_ID=$API_GATEWAY_ID" >> $GITHUB_ENV
+            echo "API_GATEWAY_ID=$API_GATEWAY_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get ECR repository URI
+        id: ecr
+        run: |
+          REPO_URI=$(aws ecr describe-repositories --repository-names quiznox-${{ env.ENVIRONMENT }} --query 'repositories[0].repositoryUri' --output text --region ${{ env.AWS_REGION }} || echo "")
+          if [ -z "$REPO_URI" ]; then
+            echo "::error::ECR repository not found. Ensure cluster-infra has been applied."
+            exit 1
+          fi
+          echo "ECR_REPOSITORY_URI=$REPO_URI" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY_URI=$REPO_URI" >> $GITHUB_OUTPUT
+
+      - name: Resolve image tag
+        run: |
+          if [ "${{ needs.detect-changes.outputs.app_changed }}" == "true" ]; then
+            echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          else
+            LATEST_TAG=$(aws ecr describe-images \
+              --repository-name quiznox-${{ env.ENVIRONMENT }} \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
+              --output text --region ${{ env.AWS_REGION }})
+            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "None" ]; then
+              echo "::error::No existing image in ECR. App source must be built first."
+              exit 1
+            fi
+            echo "IMAGE_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          fi
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          SSH_KEY="${{ secrets.SSH_PRIVATE_KEY }}"
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::SSH_PRIVATE_KEY not found in GitHub Secrets."
+            exit 1
+          fi
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts || true
+
+      - name: Setup kubeconfig
+        run: python scripts/setup_k8s.py
+        env:
+          EC2_IP: ${{ env.EC2_PUBLIC_IP }}
+          SSH_KEY: ~/.ssh/id_rsa
+          KUBECONFIG: ~/.kube/config
+
+      - name: Deploy to Kubernetes (k3s)
+        run: python scripts/deploy_to_k8s.py
+        env:
+          KUBECONFIG: ~/.kube/config
+          NAMESPACE: quiznox
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          DYNAMODB_TABLE_NAME: QuizNox_Questions
+          IMAGE_URI: ${{ env.ECR_REPOSITORY_URI }}:${{ env.IMAGE_TAG }}
+
+      - name: Update API Gateway backend
+        if: steps.infra_values.outputs.API_GATEWAY_ID != ''
+        run: python scripts/update_apigateway_backend.py
+        env:
+          EC2_PUBLIC_IP: ${{ env.EC2_PUBLIC_IP }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          API_GATEWAY_ID: ${{ env.API_GATEWAY_ID }}
+
+      - name: Verify deployment
+        run: |
+          export KUBECONFIG="${HOME}/.kube/config"
+          kubectl get pods -n quiznox
+          kubectl get svc -n quiznox
+          if kubectl wait --for=condition=ready pod -l app=quiznox-api -n quiznox --timeout=300s; then
+            echo "Pods are ready"
+          else
+            echo "Pods are not ready yet"
+            kubectl get pods -n quiznox
+          fi
+          kubectl get pods -n quiznox -o wide
+          kubectl logs -n quiznox -l app=quiznox-api --tail=20 || true

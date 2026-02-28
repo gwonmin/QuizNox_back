@@ -11,9 +11,8 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# Serverless
-.serverless/
-.serverless_plugins/
+# Build artifacts
+.image_uri
 
 # Test coverage
 coverage/
@@ -43,9 +42,6 @@ pids/
 
 # Yarn Integrity file
 .yarn-integrity
-
-# dotenv environment variables file
-.env
 
 # IDE files
 .vscode/
