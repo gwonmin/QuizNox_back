@@ -117,11 +117,33 @@ def main():
         print_success(f"Integration created: {integration_id}")
 
     print_step("Ensuring routes...")
-    routes = client.get_routes(ApiId=api_gateway_id)
-    existing_keys = {r['RouteKey'] for r in routes.get('Items', [])}
-    for key in ['$default', 'ANY /{proxy+}', 'GET /health']:
-        if key not in existing_keys:
-            client.create_route(ApiId=api_gateway_id, RouteKey=key, Target=f"integrations/{integration_id}")
+    routes_resp = client.get_routes(ApiId=api_gateway_id)
+    routes = routes_resp.get('Items', [])
+    existing_by_key = {r['RouteKey']: r for r in routes}
+
+    desired_keys = ['$default', 'ANY /{proxy+}', 'GET /health']
+    target_integration = f"integrations/{integration_id}"
+
+    for key in desired_keys:
+        existing = existing_by_key.get(key)
+        if existing:
+            route_id = existing['RouteId']
+            old_target = existing.get('Target')
+            if old_target == target_integration:
+                print_info(f"Route already points to new integration: {key}")
+            else:
+                client.update_route(
+                    ApiId=api_gateway_id,
+                    RouteId=route_id,
+                    Target=target_integration,
+                )
+                print_success(f"Route updated: {key} -> {target_integration} (was: {old_target})")
+        else:
+            client.create_route(
+                ApiId=api_gateway_id,
+                RouteKey=key,
+                Target=target_integration,
+            )
             print_success(f"Route created: {key}")
 
     print_success("API Gateway backend configured!")
