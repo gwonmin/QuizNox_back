@@ -102,16 +102,14 @@ def main():
             client.update_integration(
                 ApiId=api_gateway_id, IntegrationId=integration_id,
                 IntegrationUri=backend_url, IntegrationMethod='ANY',
-                PayloadFormatVersion='1.0', ConnectionType='INTERNET',
-                RequestParameters={'overwrite:path': '$request.path'}
+                PayloadFormatVersion='2.0', ConnectionType='INTERNET',
             )
             print_success("Integration updated")
     else:
         resp = client.create_integration(
             ApiId=api_gateway_id, IntegrationType='HTTP_PROXY',
             IntegrationUri=backend_url, IntegrationMethod='ANY',
-            PayloadFormatVersion='1.0', ConnectionType='INTERNET',
-            RequestParameters={'overwrite:path': '$request.path'}
+            PayloadFormatVersion='2.0', ConnectionType='INTERNET',
         )
         integration_id = resp['IntegrationId']
         print_success(f"Integration created: {integration_id}")

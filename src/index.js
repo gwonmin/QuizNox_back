@@ -9,6 +9,18 @@ fastify.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
+fastify.addContentTypeParser(
+  "application/x-www-form-urlencoded",
+  { parseAs: "string" },
+  (_req, body, done) => {
+    try {
+      done(null, body ? JSON.parse(body) : {});
+    } catch {
+      done(null, {});
+    }
+  },
+);
+
 fastify.get("/health", { config: { skipAuth: true } }, async () => {
   return { status: "ok", service: "quiznox-api" };
 });
