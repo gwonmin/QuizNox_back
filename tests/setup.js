@@ -7,6 +7,7 @@ process.env.DYNAMODB_TABLE_NAME =
   process.env.DYNAMODB_TABLE_NAME || "QuizNox_Questions";
 process.env.DYNAMODB_REVIEWS_TABLE_NAME =
   process.env.DYNAMODB_REVIEWS_TABLE_NAME || "QuizNox_Reviews";
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-for-ci";
 process.env.LOG_LEVEL = "error";
 
 // 전역 테스트 설정

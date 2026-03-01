@@ -4,12 +4,23 @@ const {
   createDynamoDBClient,
 } = require("../../src/services/dynamodbService");
 const fastify = require("fastify");
+const jwt = require("jsonwebtoken");
 const routes = require("../../src/routes");
 const authPlugin = require("../../src/plugins/auth");
+
+function makeAuthHeader() {
+  const token = jwt.sign(
+    { user_id: "test-user-id", username: "tester" },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" },
+  );
+  return `Bearer ${token}`;
+}
 
 describe("QuizNox Real Database Integration Tests", () => {
   let app;
   let dynamoDBClient;
+  let authHeader;
 
   beforeAll(async () => {
     app = fastify();
@@ -17,6 +28,7 @@ describe("QuizNox Real Database Integration Tests", () => {
     await app.register(routes);
     await app.ready();
     dynamoDBClient = createDynamoDBClient();
+    authHeader = makeAuthHeader();
   });
 
   afterAll(async () => {
@@ -36,7 +48,7 @@ describe("QuizNox Real Database Integration Tests", () => {
         method: "GET",
         url: "/questions?topicId=AWS_DVA",
         headers: {
-          authorization: "Bearer test_user_id",
+          authorization: authHeader,
         },
       });
 
@@ -59,6 +71,9 @@ describe("QuizNox Real Database Integration Tests", () => {
       const response = await app.inject({
         method: "GET",
         url: "/questions",
+        headers: {
+          authorization: authHeader,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -70,6 +85,9 @@ describe("QuizNox Real Database Integration Tests", () => {
       const response = await app.inject({
         method: "GET",
         url: "/questions?topicId=",
+        headers: {
+          authorization: authHeader,
+        },
       });
 
       expect(response.statusCode).toBe(400);
@@ -84,7 +102,7 @@ describe("QuizNox Real Database Integration Tests", () => {
         method: "GET",
         url: "/questions?topicId=AWS_DVA",
         headers: {
-          authorization: "Bearer test_user_id",
+          authorization: authHeader,
         },
       });
 
@@ -136,7 +154,7 @@ describe("QuizNox Real Database Integration Tests", () => {
           method: "GET",
           url: "/questions?topicId=test",
           headers: {
-            authorization: "Bearer test_user_id",
+            authorization: authHeader,
           },
         });
 
