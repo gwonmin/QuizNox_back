@@ -5,6 +5,7 @@ const DYNAMODB_REVIEWS_TABLE_NAME =
   process.env.DYNAMODB_REVIEWS_TABLE_NAME || "QuizNox_Reviews";
 
 async function reviewsRoutes(fastify, options) {
+  // GET 목록: 인증 없이 조회 (기존 questions와 동일하게 옵션 없이 등록, skipAuth는 auth 플러그인 경로 폴백으로 처리)
   fastify.get("/reviews", { config: { skipAuth: true } }, async (request, reply) => {
     try {
       const limit = Math.min(
@@ -45,6 +46,7 @@ async function reviewsRoutes(fastify, options) {
       const review = {
         review_id: randomUUID(),
         user_id: userId,
+        username: request.user?.username || null,
         content,
         created_at,
       };

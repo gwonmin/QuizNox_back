@@ -17,6 +17,7 @@
     "@fastify/cors": "^8.5.0",
     "dotenv": "^16.4.7",
     "fastify": "^4.21.0",
+    "fastify-plugin": "^5.1.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {

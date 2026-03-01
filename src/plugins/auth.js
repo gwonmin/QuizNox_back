@@ -1,15 +1,22 @@
 /**
  * Fastify 인증 플러그인
  * Bearer Token을 검증하고 user_id를 추출합니다.
+ * fastify-plugin으로 래핑하여 캡슐화를 해제해야
+ * 형제 플러그인(routes)에도 onRequest 훅이 적용됩니다.
  */
 
+const fp = require("fastify-plugin");
 const jwt = require("jsonwebtoken");
 
 async function authPlugin(fastify, options) {
   fastify.decorateRequest("user", null);
 
   fastify.addHook("onRequest", async (request, reply) => {
-    if (request.routeOptions?.config?.skipAuth) return;
+    // OPTIONS(프리플라이트)는 CORS에서 처리하므로 인증 제외
+    if (request.method === "OPTIONS") return;
+
+    // Fastify 4: route config는 request.routeConfig에 위치 (routeOptions.config 아님)
+    if (request.routeConfig?.skipAuth) return;
 
     let authHeader = null;
     const headerKeys = Object.keys(request.headers);
@@ -88,8 +95,8 @@ async function authPlugin(fastify, options) {
         });
       }
 
-      // request 객체에 user 정보 추가
-      request.user = { userId };
+      const username = decoded.username || null;
+      request.user = { userId, username };
 
       // 디버깅: userId 추출 확인
       fastify.log.info({
@@ -131,4 +138,4 @@ async function authPlugin(fastify, options) {
   });
 }
 
-module.exports = authPlugin;
+module.exports = fp(authPlugin);
