@@ -188,6 +188,7 @@ def main():
         f" --from-literal=AWS_REGION={aws_region}"
         f" --from-literal=NODE_ENV={environment}"
         f" --from-literal=DYNAMODB_TABLE_NAME={questions_table}"
+        f" --from-literal=DYNAMODB_REVIEWS_TABLE_NAME=QuizNox_Reviews"
     )
     print_success("ConfigMap created")
 

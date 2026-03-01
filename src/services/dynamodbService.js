@@ -1,11 +1,16 @@
 const {
   DynamoDBDocumentClient,
   QueryCommand,
+  ScanCommand,
+  PutCommand,
+  GetCommand,
+  DeleteCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 
 const {
   DYNAMODB_TABLE_NAME = "QuizNox_Questions",
+  DYNAMODB_REVIEWS_TABLE_NAME = "QuizNox_Reviews",
   AWS_REGION = "ap-northeast-2",
 } = process.env;
 
@@ -130,10 +135,150 @@ async function getAllQuestionsByTopic(
   }
 }
 
+/**
+ * 이용 후기 저장
+ * @param {Object} review - { review_id, user_id, content, created_at }
+ * @param {Object} options - { tableName, dynamoDBClient }
+ * @returns {Promise<Object>}
+ */
+async function putReview(review, options = {}) {
+  const {
+    tableName = DYNAMODB_REVIEWS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  if (!review?.review_id || !review?.user_id || !review?.content || !review?.created_at) {
+    throw new Error("review_id, user_id, content, created_at are required");
+  }
+
+  await dynamoDBClient.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: review,
+    })
+  );
+  return review;
+}
+
+/**
+ * 이용 후기 목록 조회 (Scan 후 created_at 내림차순 정렬, limit)
+ * @param {Object} options - { limit = 50, tableName, dynamoDBClient }
+ * @returns {Promise<Array>}
+ */
+async function listReviews(options = {}) {
+  const {
+    limit = 50,
+    tableName = DYNAMODB_REVIEWS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  const allItems = [];
+  let ExclusiveStartKey = undefined;
+
+  do {
+    const response = await dynamoDBClient.send(
+      new ScanCommand({
+        TableName: tableName,
+        ExclusiveStartKey,
+      })
+    );
+    allItems.push(...(response.Items ?? []));
+    ExclusiveStartKey = response.LastEvaluatedKey;
+  } while (ExclusiveStartKey && allItems.length < limit * 2);
+
+  const sorted = allItems
+    .filter((i) => i.created_at)
+    .sort((a, b) => (b.created_at > a.created_at ? 1 : -1))
+    .slice(0, limit);
+
+  return sorted;
+}
+
+/**
+ * 이용 후기 단건 조회
+ * @param {string} reviewId
+ * @param {Object} options - { tableName, dynamoDBClient }
+ * @returns {Promise<Object|null>}
+ */
+async function getReview(reviewId, options = {}) {
+  const {
+    tableName = DYNAMODB_REVIEWS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  if (!reviewId || typeof reviewId !== "string") {
+    throw new Error("review_id is required");
+  }
+
+  const { Item } = await dynamoDBClient.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: { review_id: reviewId },
+    })
+  );
+  return Item ?? null;
+}
+
+/**
+ * 이용 후기 수정 (content, updated_at만 변경)
+ * @param {string} reviewId
+ * @param {string} content
+ * @param {Object} options - { tableName, dynamoDBClient }
+ * @returns {Promise<Object>} 수정된 후기
+ */
+async function updateReview(reviewId, content, options = {}) {
+  const {
+    tableName = DYNAMODB_REVIEWS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  const existing = await getReview(reviewId, { tableName, dynamoDBClient });
+  if (!existing) {
+    throw new Error("Review not found");
+  }
+
+  const updated = {
+    ...existing,
+    content: content.trim(),
+    updated_at: new Date().toISOString(),
+  };
+  await dynamoDBClient.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: updated,
+    })
+  );
+  return updated;
+}
+
+/**
+ * 이용 후기 삭제
+ * @param {string} reviewId
+ * @param {Object} options - { tableName, dynamoDBClient }
+ */
+async function deleteReview(reviewId, options = {}) {
+  const {
+    tableName = DYNAMODB_REVIEWS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  await dynamoDBClient.send(
+    new DeleteCommand({
+      TableName: tableName,
+      Key: { review_id: reviewId },
+    })
+  );
+}
+
 module.exports = {
   getQuestionsByTopic,
   createDynamoDBClient,
   getDynamoDBClient,
   logger,
   getAllQuestionsByTopic,
+  putReview,
+  listReviews,
+  getReview,
+  updateReview,
+  deleteReview,
 };

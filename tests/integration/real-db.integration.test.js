@@ -7,30 +7,20 @@ const fastify = require("fastify");
 const routes = require("../../src/routes");
 const authPlugin = require("../../src/plugins/auth");
 
-// 실제 DynamoDB 연결을 위한 환경 변수 설정
-process.env.AWS_REGION = "ap-northeast-2";
-process.env.DYNAMODB_TABLE_NAME = "QuizNox_Questions";
-
 describe("QuizNox Real Database Integration Tests", () => {
   let app;
   let dynamoDBClient;
 
   beforeAll(async () => {
-    // Fastify 앱 설정
     app = fastify();
-    // 인증 플러그인 등록 (프로덕션과 동일하게)
     await app.register(authPlugin);
     await app.register(routes);
     await app.ready();
-
-    // 실제 DynamoDB 클라이언트 생성
     dynamoDBClient = createDynamoDBClient();
-    console.log("🔗 실제 DynamoDB 테이블에 연결되었습니다.");
   });
 
   afterAll(async () => {
     await app.close();
-    console.log("🔌 연결을 종료합니다.");
   });
 
   describe("Database Connection", () => {

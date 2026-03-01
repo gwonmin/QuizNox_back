@@ -51,6 +51,11 @@ spec:
                 configMapKeyRef:
                   name: quiznox-config
                   key: DYNAMODB_TABLE_NAME
+            - name: DYNAMODB_REVIEWS_TABLE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: quiznox-config
+                  key: DYNAMODB_REVIEWS_TABLE_NAME
           resources:
             requests:
               cpu: 50m
