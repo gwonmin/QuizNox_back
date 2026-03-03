@@ -1,44 +1,44 @@
 require("dotenv").config();
 
-const fastify = require("fastify")({ logger: true });
+const fastify = require("fastify");
 const cors = require("@fastify/cors");
 const authPlugin = require("./plugins/auth");
 const routes = require("./routes");
 
-fastify.register(cors, {
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-});
+function createServer() {
+  const app = fastify({ logger: true });
 
-fastify.addContentTypeParser(
-  "application/x-www-form-urlencoded",
-  { parseAs: "string" },
-  (_req, body, done) => {
-    try {
-      done(null, body ? JSON.parse(body) : {});
-    } catch {
-      done(null, {});
-    }
-  },
-);
+  app.register(cors, {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  });
 
-fastify.get("/health", { config: { skipAuth: true } }, async () => {
-  return { status: "ok", service: "quiznox-api" };
-});
+  app.get("/health", { config: { skipAuth: true } }, async () => {
+    return { status: "ok", service: "quiznox-api" };
+  });
 
-fastify.register(authPlugin);
-fastify.register(routes);
+  app.register(authPlugin);
+  app.register(routes);
 
-const start = async () => {
+  return app;
+}
+
+async function start() {
+  const app = createServer();
+
   try {
-    await fastify.listen({
+    await app.listen({
       port: process.env.PORT || 4000,
       host: process.env.HOST || "0.0.0.0",
     });
   } catch (err) {
-    fastify.log.error(err);
+    app.log.error(err);
     process.exit(1);
   }
-};
+}
 
-start();
+if (require.main === module) {
+  start();
+}
+
+module.exports = { createServer, start };
