@@ -9,6 +9,27 @@ const fp = require("fastify-plugin");
 const jwt = require("jsonwebtoken");
 
 async function authPlugin(fastify, options) {
+  // 로컬 개발 등에서 JWT 인증을 완전히 비활성화할 수 있는 플래그
+  const isAuthDisabled = process.env.DISABLE_JWT_AUTH === "true";
+  const devUserId = process.env.DEV_USER_ID || "dev-user";
+  const devUsername = process.env.DEV_USERNAME || "dev-user";
+
+  // 애플리케이션 부팅 시점에 JWT_SECRET을 한 번만 검증하여
+  // 요청 처리 중간에 500 에러가 발생하지 않도록 한다.
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (!isAuthDisabled && !jwtSecret) {
+    fastify.log.error("JWT_SECRET 환경 변수가 설정되지 않았습니다.");
+    throw new Error("JWT_SECRET 환경 변수가 설정되지 않았습니다.");
+  }
+
+  if (isAuthDisabled) {
+    fastify.log.warn("DISABLE_JWT_AUTH=true 이므로 JWT 인증이 비활성화되었습니다.");
+  }
+
+  // 라우트 레벨에서 인증 비활성화 여부를 참조할 수 있도록 fastify 인스턴스에 노출
+  fastify.decorate("isAuthDisabled", isAuthDisabled);
+
   fastify.decorateRequest("user", null);
 
   fastify.addHook("onRequest", async (request, reply) => {
@@ -17,6 +38,16 @@ async function authPlugin(fastify, options) {
 
     // Fastify 4: route config는 request.routeConfig에 위치 (routeOptions.config 아님)
     if (request.routeConfig?.skipAuth) return;
+
+    // 전역 JWT 인증 비활성화 플래그가 켜져 있으면 인증을 건너뜀
+    // 후기 작성 등에서 user 정보가 필요한 경우가 있으므로, 최소한의 더미 유저를 주입한다.
+    if (isAuthDisabled) {
+      request.user = request.user || {
+        userId: devUserId,
+        username: devUsername,
+      };
+      return;
+    }
 
     let authHeader = null;
     const headerKeys = Object.keys(request.headers);
@@ -66,18 +97,6 @@ async function authPlugin(fastify, options) {
     const token = parts[1];
 
     try {
-      // JWT_SECRET 환경 변수 확인
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
-        fastify.log.error("JWT_SECRET 환경 변수가 설정되지 않았습니다.");
-        return reply.status(500).send({
-          success: false,
-          data: null,
-          message: "서버 설정 오류가 발생했습니다.",
-          statusCode: 500,
-        });
-      }
-
       // JWT 토큰 검증 및 디코딩
       const decoded = jwt.verify(token, jwtSecret);
 

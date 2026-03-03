@@ -25,8 +25,9 @@ async function reviewsRoutes(fastify, options) {
 
   fastify.post("/reviews", async (request, reply) => {
     try {
+      const isAuthDisabled = fastify.isAuthDisabled === true;
       const userId = request.user?.userId;
-      if (!userId) {
+      if (!userId && !isAuthDisabled) {
         return reply.status(401).send({ message: "Unauthorized" });
       }
 
@@ -61,8 +62,9 @@ async function reviewsRoutes(fastify, options) {
 
   fastify.put("/reviews/:review_id", async (request, reply) => {
     try {
+      const isAuthDisabled = fastify.isAuthDisabled === true;
       const userId = request.user?.userId;
-      if (!userId) {
+      if (!userId && !isAuthDisabled) {
         return reply.status(401).send({ message: "Unauthorized" });
       }
 
@@ -77,7 +79,7 @@ async function reviewsRoutes(fastify, options) {
       if (!existing) {
         return reply.status(404).send({ message: "Review not found" });
       }
-      if (existing.user_id !== userId) {
+      if (!isAuthDisabled && existing.user_id !== userId) {
         return reply.status(403).send({ message: "Forbidden" });
       }
 
@@ -105,8 +107,9 @@ async function reviewsRoutes(fastify, options) {
 
   fastify.delete("/reviews/:review_id", async (request, reply) => {
     try {
+      const isAuthDisabled = fastify.isAuthDisabled === true;
       const userId = request.user?.userId;
-      if (!userId) {
+      if (!userId && !isAuthDisabled) {
         return reply.status(401).send({ message: "Unauthorized" });
       }
 
@@ -121,7 +124,7 @@ async function reviewsRoutes(fastify, options) {
       if (!existing) {
         return reply.status(404).send({ message: "Review not found" });
       }
-      if (existing.user_id !== userId) {
+      if (!isAuthDisabled && existing.user_id !== userId) {
         return reply.status(403).send({ message: "Forbidden" });
       }
 
