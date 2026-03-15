@@ -13,6 +13,18 @@ function createServer() {
     methods: ["GET", "POST", "PUT", "DELETE"],
   });
 
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_req, body, done) => {
+      try {
+        done(null, body ? JSON.parse(body) : {});
+      } catch {
+        done(null, {});
+      }
+    },
+  );
+
   app.get("/health", { config: { skipAuth: true } }, async () => {
     return { status: "ok", service: "quiznox-api" };
   });
