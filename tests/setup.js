@@ -7,6 +7,8 @@ process.env.DYNAMODB_TABLE_NAME =
   process.env.DYNAMODB_TABLE_NAME || "QuizNox_Questions";
 process.env.DYNAMODB_REVIEWS_TABLE_NAME =
   process.env.DYNAMODB_REVIEWS_TABLE_NAME || "QuizNox_Reviews";
+process.env.DYNAMODB_PROGRESS_TABLE_NAME =
+  process.env.DYNAMODB_PROGRESS_TABLE_NAME || "QuizNox_Progress";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret-for-ci";
 process.env.LOG_LEVEL = "error";
 

@@ -11,6 +11,7 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DYNAMODB_TABLE_NAME = "QuizNox_Questions",
   DYNAMODB_REVIEWS_TABLE_NAME = "QuizNox_Reviews",
+  DYNAMODB_PROGRESS_TABLE_NAME = "QuizNox_Progress",
   AWS_REGION = "ap-northeast-2",
 } = process.env;
 
@@ -270,6 +271,84 @@ async function deleteReview(reviewId, options = {}) {
   );
 }
 
+/**
+ * 사용자의 모든 토픽별 풀이 진행 상태 조회
+ * @param {string} userId
+ * @param {Object} options - { tableName, dynamoDBClient }
+ * @returns {Promise<Array>}
+ */
+async function getProgressByUser(userId, options = {}) {
+  const {
+    tableName = DYNAMODB_PROGRESS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  if (!userId || typeof userId !== "string") {
+    throw new Error("userId must be a non-empty string");
+  }
+
+  const { Items } = await dynamoDBClient.send(
+    new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: "user_id = :uid",
+      ExpressionAttributeValues: {
+        ":uid": userId,
+      },
+    })
+  );
+
+  return Items ?? [];
+}
+
+/**
+ * 특정 토픽의 풀이 진행 상태 저장/갱신
+ * @param {Object} progressItem - { user_id, topic_id, question_number, topic_name, updated_at }
+ * @param {Object} options - { tableName, dynamoDBClient }
+ * @returns {Promise<Object>}
+ */
+async function putProgress(progressItem, options = {}) {
+  const {
+    tableName = DYNAMODB_PROGRESS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  if (!progressItem?.user_id || !progressItem?.topic_id || progressItem?.question_number == null) {
+    throw new Error("user_id, topic_id, question_number are required");
+  }
+
+  await dynamoDBClient.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: progressItem,
+    })
+  );
+  return progressItem;
+}
+
+/**
+ * 특정 토픽의 풀이 진행 상태 삭제
+ * @param {string} userId
+ * @param {string} topicId
+ * @param {Object} options - { tableName, dynamoDBClient }
+ */
+async function deleteProgress(userId, topicId, options = {}) {
+  const {
+    tableName = DYNAMODB_PROGRESS_TABLE_NAME,
+    dynamoDBClient = getDynamoDBClient(),
+  } = options;
+
+  if (!userId || !topicId) {
+    throw new Error("userId and topicId are required");
+  }
+
+  await dynamoDBClient.send(
+    new DeleteCommand({
+      TableName: tableName,
+      Key: { user_id: userId, topic_id: topicId },
+    })
+  );
+}
+
 module.exports = {
   getQuestionsByTopic,
   createDynamoDBClient,
@@ -281,4 +360,7 @@ module.exports = {
   getReview,
   updateReview,
   deleteReview,
+  getProgressByUser,
+  putProgress,
+  deleteProgress,
 };

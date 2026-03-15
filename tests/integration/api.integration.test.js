@@ -312,4 +312,113 @@ describe("QuizNox API Integration Tests", () => {
       expect([404, 500]).toContain(response.statusCode);
     });
   });
+
+  describe("GET /progress", () => {
+    it("should return 401 without auth", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/progress",
+      });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it("should return 200 and array with auth", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/progress",
+        headers: { authorization: authHeader },
+      });
+      expect([200, 500]).toContain(response.statusCode);
+      if (response.statusCode === 200) {
+        const data = JSON.parse(response.payload);
+        expect(Array.isArray(data)).toBe(true);
+      }
+    });
+  });
+
+  describe("PUT /progress", () => {
+    it("should return 401 without auth", async () => {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/progress",
+        payload: { topicId: "AWS_DVA", questionNumber: 1 },
+      });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it("should return 400 when topicId is missing", async () => {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/progress",
+        headers: { authorization: authHeader },
+        payload: { questionNumber: 1 },
+      });
+      expect(response.statusCode).toBe(400);
+      const data = JSON.parse(response.payload);
+      expect(data.message).toContain("topicId");
+    });
+
+    it("should return 400 when questionNumber is missing", async () => {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/progress",
+        headers: { authorization: authHeader },
+        payload: { topicId: "AWS_DVA" },
+      });
+      expect(response.statusCode).toBe(400);
+      const data = JSON.parse(response.payload);
+      expect(data.message).toContain("questionNumber");
+    });
+
+    it("should return 400 when questionNumber is not a number", async () => {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/progress",
+        headers: { authorization: authHeader },
+        payload: { topicId: "AWS_DVA", questionNumber: "abc" },
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("should return 200 or 500 with valid payload", async () => {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/progress",
+        headers: { authorization: authHeader },
+        payload: {
+          topicId: "AWS_DVA",
+          questionNumber: 42,
+          topicName: "AWS Certified Developer",
+        },
+      });
+      expect([200, 500]).toContain(response.statusCode);
+      if (response.statusCode === 200) {
+        const data = JSON.parse(response.payload);
+        expect(data).toHaveProperty("user_id");
+        expect(data).toHaveProperty("topic_id", "AWS_DVA");
+        expect(data).toHaveProperty("question_number", 42);
+        expect(data).toHaveProperty("topic_name", "AWS Certified Developer");
+        expect(data).toHaveProperty("updated_at");
+      }
+    });
+  });
+
+  describe("DELETE /progress/:topic_id", () => {
+    it("should return 401 without auth", async () => {
+      const response = await app.inject({
+        method: "DELETE",
+        url: "/progress/AWS_DVA",
+      });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it("should return 204 or 500 with auth", async () => {
+      const response = await app.inject({
+        method: "DELETE",
+        url: "/progress/AWS_DVA",
+        headers: { authorization: authHeader },
+      });
+      expect([204, 500]).toContain(response.statusCode);
+    });
+  });
 });
